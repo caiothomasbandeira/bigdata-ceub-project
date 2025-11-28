@@ -458,12 +458,17 @@ Para contribuir com este projeto:
 
 ## Licença
 
-Este projeto é para fins educacionais - CEUB (Centro Universitário de Brasília).
+- Este projeto é para fins educacionais - CEUB (Centro Universitário de Brasília).
+- Projeto desenvolvido para disciplina de Fundamentos de Big Data do 4º semestre com professor Klayton Rodrigues de Castro
 
 ## Autores
 
-- Projeto desenvolvido para disciplina de Fundamentos de Big Data
-- 
+|        Nome Completo       |    RA    |
+|----------------------------|----------|
+| Caio Thomas Silva Bandeira | 22407182 |
+| Luis Vinicius Hernani      | 22402740 |
+| Arthur Gonçalves Farias dos Reis | 22409753 |
+| Vinícius César Sena Torres | 22409225 |
 
 ---
 
