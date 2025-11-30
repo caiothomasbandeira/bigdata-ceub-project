@@ -5,6 +5,8 @@ minio/minio-backup/
 # Notebooks e dados do Spark
 spark/notebooks/*.ipynb
 !spark/notebooks/exemplo_minio_spark.ipynb
+!spark/notebooks/ingestao_de_dados.ipynb
+!spark/notebooks/modelagem_ml.ipynb
 spark/data/*
 !spark/data/.gitkeep
 spark/config/*
