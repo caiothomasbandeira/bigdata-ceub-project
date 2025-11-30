@@ -5,3 +5,4 @@ matplotlib==3.9.2
 scikit-learn==1.5.2
 plotly==5.24.1
 s3fs==2024.9.0
+pyarrow==17.0.0

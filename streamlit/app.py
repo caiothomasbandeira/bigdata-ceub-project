@@ -26,11 +26,47 @@ MINIO_SECRET_KEY = os.environ.get("MINIO_SECRET_KEY", "minioadmin")
 MINIO_BUCKET = os.environ.get("MINIO_BUCKET", "dados-supplychain")
 MINIO_OBJECT = os.environ.get("MINIO_OBJECT", "trase/brazil_beef/raw/full_csv_dump/")
 
+POTENTIAL_YEAR_COLS = ["year", "ano"]
+POTENTIAL_DIMENSION_COLUMNS = [
+    "municipality_of_production",
+    "state_of_production",
+    "biome",
+    "exporter_group",
+    "exporter",
+    "trader",
+    "importer",
+    "country_of_destination",
+    "destination",
+]
+PREFERRED_METRIC_COLS = [
+    "total_volume_t",
+    "total_fob_usd",
+    "cattle_deforestation_5_year_total_exposure",
+    "total_co2_gross_tco2",
+    "total_co2_net_tco2",
+    "total_pasture_area_ha",
+]
+METRIC_LABELS = {
+    "total_volume_t": "Trade volume (t)",
+    "total_fob_usd": "Trade value (USD)",
+    "cattle_deforestation_5_year_total_exposure": "Cattle deforestation exposure (ha)",
+    "total_co2_gross_tco2": "Gross emissions from cattle deforestation (t CO₂-eq.)",
+    "total_co2_net_tco2": "Net emissions from cattle deforestation (t CO₂-eq.)",
+    "total_pasture_area_ha": "Pasture area (ha)",
+}
+
+
 # =========================
 # Leitura de dados
 # =========================
+def _maybe_parquet(path_str: str) -> bool:
+    return path_str.endswith(".parquet") or path_str.endswith("/")
+
+
 @st.cache_data(show_spinner=False)
 def load_local_csv(path: Path) -> pd.DataFrame:
+    if _maybe_parquet(str(path)):
+        return pd.read_parquet(path)
     return pd.read_csv(path)
 
 
@@ -42,7 +78,16 @@ def load_minio_parquet(bucket: str, key: str) -> pd.DataFrame:
         "secret": MINIO_SECRET_KEY,
         "client_kwargs": {"endpoint_url": MINIO_ENDPOINT},
     }
-    return pd.read_parquet(url, storage_options=storage_options)
+    if _maybe_parquet(key):
+        return pd.read_parquet(url, storage_options=storage_options)
+    return pd.read_csv(url, storage_options=storage_options)
+
+
+def ensure_numeric_metrics(dataframe: pd.DataFrame) -> pd.DataFrame:
+    for col in PREFERRED_METRIC_COLS:
+        if col in dataframe.columns:
+            dataframe[col] = pd.to_numeric(dataframe[col], errors="coerce")
+    return dataframe
 
 
 st.sidebar.header("Configurações de Dados")
@@ -81,6 +126,7 @@ else:
 
 if df is None:
     st.stop()
+df = ensure_numeric_metrics(df)
 
 # =========================
 # Visão geral rápida
@@ -101,20 +147,7 @@ with st.expander("Ver nomes das colunas"):
 numeric_cols = df.select_dtypes(include="number").columns.tolist()
 
 # Colunas típicas do Trase (usadas só se realmente existirem)
-POTENTIAL_YEAR_COLS = ["year", "ano"]
 YEAR_COL = next((c for c in POTENTIAL_YEAR_COLS if c in df.columns), None)
-
-POTENTIAL_DIMENSION_COLUMNS = [
-    "municipality_of_production",
-    "state_of_production",
-    "biome",
-    "exporter_group",
-    "exporter",
-    "trader",
-    "importer",
-    "country_of_destination",
-    "destination",
-]
 available_dims = [c for c in POTENTIAL_DIMENSION_COLUMNS if c in df.columns]
 
 # Ordem default inspirada no link do Trase
@@ -130,26 +163,9 @@ default_flow_dims = [
 ]
 
 # Métricas típicas do Trase + fallback para qualquer numérica
-PREFERRED_METRIC_COLS = [
-    "total_volume_t",
-    "total_fob_usd",
-    "cattle_deforestation_5_year_total_exposure",
-    "total_co2_gross_tco2",
-    "total_co2_net_tco2",
-    "total_pasture_area_ha",
-]
 available_metric_cols = [c for c in PREFERRED_METRIC_COLS if c in df.columns]
 if not available_metric_cols:
     available_metric_cols = numeric_cols[:]  # fallback genérico
-
-METRIC_LABELS = {
-    "total_volume_t": "Trade volume (t)",
-    "total_fob_usd": "Trade value (USD)",
-    "cattle_deforestation_5_year_total_exposure": "Cattle deforestation exposure (ha)",
-    "total_co2_gross_tco2": "Gross emissions from cattle deforestation (t CO₂-eq.)",
-    "total_co2_net_tco2": "Net emissions from cattle deforestation (t CO₂-eq.)",
-    "total_pasture_area_ha": "Pasture area (ha)",
-}
 
 # =========================
 # Filtros – Sidebar (imitando painel do Trase)
@@ -191,37 +207,18 @@ if available_dims:
 else:
     flow_dims = []
 
-# Alguns filtros opcionais por dimensão famosa
-if "biome" in df.columns:
-    biomes = sorted(df["biome"].dropna().unique())
-    selected_biomes = st.sidebar.multiselect("Bioma", options=biomes, default=biomes)
-else:
-    selected_biomes = None
 
-if "state_of_production" in df.columns:
-    states = sorted(df["state_of_production"].dropna().unique())
-    selected_states = st.sidebar.multiselect(
-        "Estado de produção", options=states, default=states
-    )
-else:
-    selected_states = None
+def _multiselect_if_exists(col_name: str, label: str):
+    if col_name not in df.columns:
+        return None
+    options = sorted(df[col_name].dropna().unique())
+    return st.sidebar.multiselect(label, options=options, default=options)
 
-if "exporter_group" in df.columns:
-    exporters = sorted(df["exporter_group"].dropna().unique())
-    selected_exporters = st.sidebar.multiselect(
-        "Exportador (grupo)", options=exporters, default=exporters
-    )
-else:
-    selected_exporters = None
 
-if "country_of_destination" in df.columns:
-    countries = sorted(df["country_of_destination"].dropna().unique())
-    selected_countries = st.sidebar.multiselect(
-        "País de destino", options=countries, default=countries
-    )
-else:
-    selected_countries = None
-
+selected_biomes = _multiselect_if_exists("biome", "Bioma")
+selected_states = _multiselect_if_exists("state_of_production", "Estado de produção")
+selected_exporters = _multiselect_if_exists("exporter_group", "Exportador (grupo)")
+selected_countries = _multiselect_if_exists("country_of_destination", "País de destino")
 
 # =========================
 # Aplicar filtros no DataFrame
@@ -232,17 +229,15 @@ def apply_filters(df_in: pd.DataFrame) -> pd.DataFrame:
     if YEAR_COL and selected_years:
         df_f = df_f[df_f[YEAR_COL].isin(selected_years)]
 
-    if selected_biomes is not None:
-        df_f = df_f[df_f["biome"].isin(selected_biomes)]
+    def apply_optional(col_name: str, selected):
+        nonlocal df_f
+        if selected is not None and col_name in df_f.columns:
+            df_f = df_f[df_f[col_name].isin(selected)]
 
-    if selected_states is not None:
-        df_f = df_f[df_f["state_of_production"].isin(selected_states)]
-
-    if selected_exporters is not None:
-        df_f = df_f[df_f["exporter_group"].isin(selected_exporters)]
-
-    if selected_countries is not None:
-        df_f = df_f[df_f["country_of_destination"].isin(selected_countries)]
+    apply_optional("biome", selected_biomes)
+    apply_optional("state_of_production", selected_states)
+    apply_optional("exporter_group", selected_exporters)
+    apply_optional("country_of_destination", selected_countries)
 
     if "country_of_destination" in df_f.columns and not include_domestic:
         df_f = df_f[df_f["country_of_destination"] != "Brazil"]
@@ -250,7 +245,18 @@ def apply_filters(df_in: pd.DataFrame) -> pd.DataFrame:
     return df_f
 
 
+def coerce_metric(df_in: pd.DataFrame, column: str) -> pd.DataFrame:
+    if column in df_in.columns:
+        df_in = df_in.copy()
+        df_in[column] = pd.to_numeric(df_in[column], errors="coerce")
+    return df_in
+
+
 df_filtered = apply_filters(df)
+if df_filtered.empty:
+    st.warning("Nenhum dado encontrado após aplicar os filtros. Ajuste os filtros e tente novamente.")
+    st.stop()
+df_filtered = coerce_metric(df_filtered, metric_col)
 
 # =========================
 # Abas principais (imitando Trase)
