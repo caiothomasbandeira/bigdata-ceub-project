@@ -15,8 +15,8 @@ services:
       - MINIO_ENDPOINT=http://minio:9000
       - MINIO_ACCESS_KEY=minioadmin
       - MINIO_SECRET_KEY=minioadmin
-      - MINIO_BUCKET=dados
-      - MINIO_OBJECT=brazil_beef_v2_2_1/brazil_beef_v2_2_1.csv
+      - MINIO_BUCKET=dados-supplychain
+      - MINIO_OBJECT=trase/brazil_beef/raw/full_csv_dump/
     networks:
       - mybridge
 networks:
