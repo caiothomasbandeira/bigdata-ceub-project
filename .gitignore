@@ -47,3 +47,5 @@ desktop.ini
 
 # Docker
 .dockerignore
+spark/notebooks/data/trase_data/brazil_beef_v2_2_1.zip
+spark/notebooks/data/trase_data/brazil_beef_v2_2_1/brazil_beef_v2_2_1.csv

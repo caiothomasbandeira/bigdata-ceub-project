@@ -21,7 +21,7 @@ MINIO_ACCESS_KEY = os.environ.get("MINIO_ACCESS_KEY", "minioadmin")
 MINIO_SECRET_KEY = os.environ.get("MINIO_SECRET_KEY", "minioadmin")
 MINIO_BUCKET = os.environ.get("MINIO_BUCKET", "dados")
 MINIO_OBJECT = os.environ.get(
-    "MINIO_OBJECT", "trase/brazil_beef/raw/full_csv_dump/part-00000-114a77a7-d9d3-41e0-87d6-e030ade2cb52-c000.snappy.parquet."
+    "MINIO_OBJECT", "trase/brazil_beef/raw/full_csv_dump/part-00000-114a77a7-d9d3-41e0-87d6-e030ade2cb52-c000.snappy.parquet.docker ps"
 )
 
 
